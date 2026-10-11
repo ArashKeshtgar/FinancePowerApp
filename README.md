@@ -89,5 +89,8 @@ and the months of 2025 and 2026; it changes nothing the Power App uses. Take a b
 - [x] Ledger, receivables, payables, HST, posting maps, inbox, reports, web UI
 - [x] Approved Power App expenses into the ledger
 - [ ] Sign-in through ClinicHub (`finance:*` permissions); development uses a single developer user
-- [ ] Documents from ClinicHub, LabFlow, ClinicReport and PharmaFlow
+- [x] Documents from ClinicHub (claims, remittances, physicians' shares, uninsured invoices and payments), LabFlow
+      (patient invoices, online payments; insured work once fees are set) and ClinicReport (signed ordered exams once
+      template fees are set). Run with `--launch-profile connected` so their ClinicHub tokens are checked
+- [ ] Documents from PharmaFlow
 - [ ] Bank reconciliation, year-end closing entry, T4A slips for physicians
