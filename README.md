@@ -92,5 +92,5 @@ and the months of 2025 and 2026; it changes nothing the Power App uses. Take a b
 - [x] Documents from ClinicHub (claims, remittances, physicians' shares, uninsured invoices and payments), LabFlow
       (patient invoices, online payments; insured work once fees are set) and ClinicReport (signed ordered exams once
       template fees are set). Run with `--launch-profile connected` so their ClinicHub tokens are checked
-- [ ] Documents from PharmaFlow
+- [x] Documents from PharmaFlow ([Drugstore](https://github.com/ArashKeshtgar/Drugstore)): supplier invoices, dispenses (plan and patient shares, payment), cost of drugs
 - [ ] Bank reconciliation, year-end closing entry, T4A slips for physicians
