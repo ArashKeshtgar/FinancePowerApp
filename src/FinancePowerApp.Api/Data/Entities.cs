@@ -268,6 +268,13 @@ public class Expense
     public DateTime? ApprovedDate { get; set; }
     public int? CategoryId { get; set; }
     public decimal? TaxAmount { get; set; }
-    public int? EntityId { get; set; }
-    public long? JournalEntryId { get; set; }
+}
+
+/// <summary>Which journal entry an approved expense became (kept apart: the Power App's trigger owns dbo.Expenses).</summary>
+public class ExpensePosting
+{
+    public int ExpenseId { get; set; }
+    public int EntityId { get; set; }
+    public long JournalEntryId { get; set; }
+    public DateTime PostedUtc { get; set; }
 }

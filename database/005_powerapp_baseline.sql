@@ -149,3 +149,31 @@ SELECT s.ExpenseId, s.Category, s.Amount, s.AvgAmount, s.StdDevAmount, s.SampleS
     CASE WHEN ABS(s.ZScore) < 2 THEN ''Normal'' WHEN ABS(s.ZScore) < 3 THEN ''Medium'' ELSE ''High'' END AS RiskLevel
 FROM vw_ExpenseStats s;');
 GO
+
+-- The Power App's guard: expenses in a closed month can't be inserted or changed.
+IF OBJECT_ID(N'dbo.trg_BlockChangesOnClosedPeriod', N'TR') IS NULL
+EXEC(N'CREATE TRIGGER [dbo].[trg_BlockChangesOnClosedPeriod]
+ON [dbo].[Expenses]
+INSTEAD OF INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF EXISTS (SELECT 1 FROM inserted i JOIN AccountingPeriods p ON i.PeriodId = p.PeriodId WHERE p.IsClosed = 1)
+    BEGIN
+        RAISERROR (''Accounting period is closed. No changes allowed.'', 16, 1);
+        RETURN;
+    END
+    IF NOT EXISTS (SELECT 1 FROM deleted)
+    BEGIN
+        INSERT INTO Expenses (Amount, Category, ExpenseDate, Vendor, Description, Status, PeriodId, ApprovedBy, ApprovedDate, CategoryId, TaxAmount)
+        SELECT Amount, Category, ExpenseDate, Vendor, Description, Status, PeriodId, ApprovedBy, ApprovedDate, CategoryId, TaxAmount FROM inserted;
+    END
+    ELSE
+    BEGIN
+        UPDATE e SET e.Amount = i.Amount, e.Category = i.Category, e.ExpenseDate = i.ExpenseDate, e.Vendor = i.Vendor,
+            e.Description = i.Description, e.Status = i.Status, e.PeriodId = i.PeriodId, e.ApprovedBy = i.ApprovedBy,
+            e.ApprovedDate = i.ApprovedDate, e.CategoryId = i.CategoryId, e.TaxAmount = i.TaxAmount
+        FROM Expenses e JOIN inserted i ON e.ExpenseId = i.ExpenseId;
+    END
+END;');
+GO

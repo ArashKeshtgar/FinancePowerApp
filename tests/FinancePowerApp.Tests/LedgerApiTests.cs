@@ -141,12 +141,16 @@ public class LedgerApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Approved_power_app_expenses_become_bills_in_the_ledger()
     {
-        await factory.Exec("INSERT dbo.Expenses (Amount, Category, ExpenseDate, Vendor, Description, Status, TaxAmount) VALUES (226.00, 'Office Supplies', '2026-10-03', 'Staples', 'Paper', 'Approved', 26.00), (99.00, 'Travel', '2026-10-03', 'VIA Rail', 'Trip', 'Pending', NULL)");
+        // TaxAmount in the Power App is the deductible part for income tax, not HST: the whole 226 is the expense.
+        await factory.Exec("INSERT dbo.Expenses (Amount, Category, ExpenseDate, Vendor, Description, Status, TaxAmount) VALUES (226.00, 'Office Supplies', '2026-10-03', 'Staples', 'Paper', 'Approved', 226.00), (99.00, 'Travel', '2026-10-03', 'VIA Rail', 'Trip', 'Pending', NULL), (40.00, 'Gadgets', '2026-10-04', 'Shop', 'Unmapped category', 'Approved', 40.00)");
         var result = await Json(await factory.App().PostAsync("/api/expenses/post-approved", null));
-        Assert.Equal(1, result["posted"]!.GetValue<int>());
-        Assert.Equal(1, await factory.Scalar<int>("SELECT COUNT(*) FROM dbo.Expenses WHERE JournalEntryId IS NOT NULL"));
-        // The head office can claim the HST back: expense 226 - 26 ITC.
-        Assert.Equal(26m, await factory.Scalar<decimal>("SELECT SUM(Debit) FROM gl.JournalLine l JOIN gl.Account a ON a.AccountId = l.AccountId WHERE a.Number = '1300' AND l.JournalEntryId = (SELECT JournalEntryId FROM dbo.Expenses WHERE Vendor = 'Staples')"));
+        Assert.Equal(2, result["posted"]!.GetValue<int>());
+        Assert.Equal(2, await factory.Scalar<int>("SELECT COUNT(*) FROM ap.ExpensePosting"));
+        var staples = "(SELECT p.JournalEntryId FROM ap.ExpensePosting p JOIN dbo.Expenses e ON e.ExpenseId = p.ExpenseId WHERE e.Vendor = 'Staples')";
+        Assert.Equal(226m, await factory.Scalar<decimal>($"SELECT SUM(Debit) FROM gl.JournalLine l JOIN gl.Account a ON a.AccountId = l.AccountId WHERE a.Number = '6200' AND l.JournalEntryId = {staples}"));
+        Assert.Equal(0, await factory.Scalar<int>($"SELECT COUNT(*) FROM gl.JournalLine l JOIN gl.Account a ON a.AccountId = l.AccountId WHERE a.Number = '1300' AND l.JournalEntryId = {staples}"));
+        // A category the ledger doesn't know goes to Other expenses.
+        Assert.Equal(40m, await factory.Scalar<decimal>("SELECT SUM(Debit) FROM gl.JournalLine l JOIN gl.Account a ON a.AccountId = l.AccountId WHERE a.Number = '6900'"));
         Assert.Equal(0, (await Json(await factory.App().PostAsync("/api/expenses/post-approved", null)))["posted"]!.GetValue<int>());
     }
 

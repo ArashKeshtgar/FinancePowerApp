@@ -65,7 +65,12 @@ public static class IntegrationEndpoints
             return Results.Ok(new { posted, skipped });
         }).RequireAuthorization(FinancePermissions.Post).WithTags("Expenses");
         app.MapGet("/api/expenses", async (FinanceDbContext db) =>
-            await db.Expenses.AsNoTracking().OrderByDescending(e => e.ExpenseDate).ThenByDescending(e => e.ExpenseId).Take(300).ToListAsync())
+            await db.Expenses.AsNoTracking().OrderByDescending(e => e.ExpenseDate).ThenByDescending(e => e.ExpenseId).Take(300)
+                .Select(e => new
+                {
+                    e.ExpenseId, e.Amount, e.Category, e.ExpenseDate, e.Vendor, e.Description, e.Status, e.TaxAmount, e.PeriodId,
+                    JournalEntryId = db.ExpensePostings.Where(p => p.ExpenseId == e.ExpenseId).Select(p => (long?)p.JournalEntryId).FirstOrDefault(),
+                }).ToListAsync())
             .RequireAuthorization(FinancePermissions.View).WithTags("Expenses");
     }
 }

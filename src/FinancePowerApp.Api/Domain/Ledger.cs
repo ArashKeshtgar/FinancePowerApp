@@ -285,24 +285,26 @@ public class Ledger(FinanceDbContext db, TimeProvider clock)
     // ------------------------------------------------------------ the Power App's expenses
 
     /// <summary>
-    /// Approved expenses not yet in the ledger become bills: the expense account of their category, the HST (an input
-    /// tax credit where the business can claim one), owed to the vendor. Returns how many were posted.
+    /// Approved expenses not yet in the ledger become bills of the default business: the full amount paid to the
+    /// expense account of their category, owed to the vendor. The Power App's TaxAmount is the part deductible for
+    /// income tax (it feeds vw_TaxLedger with the category's TaxDeductible flag), not HST: the Power App doesn't record
+    /// the HST on a receipt, so no input tax credit is taken. Returns how many were posted, and why others weren't.
     /// </summary>
     public async Task<(int Posted, List<string> Skipped)> PostApprovedExpensesAsync(string user)
     {
         var skipped = new List<string>();
-        var expenses = await db.Expenses.Where(e => e.Status == "Approved" && e.JournalEntryId == null).OrderBy(e => e.ExpenseId).ToListAsync();
-        var fallback = await db.Entities.SingleAsync(e => e.IsDefault);
+        var expenses = await db.Expenses.AsNoTracking()
+            .Where(e => e.Status == "Approved" && !db.ExpensePostings.Any(p => p.ExpenseId == e.ExpenseId)).OrderBy(e => e.ExpenseId).ToListAsync();
+        var entity = await db.Entities.SingleAsync(e => e.IsDefault);
+        var maps = await MapsAsync(entity.EntityId);
         var posted = 0;
         foreach (var x in expenses)
         {
-            var entity = x.EntityId is { } id ? await db.Entities.SingleAsync(e => e.EntityId == id) : fallback;
-            var maps = await MapsAsync(entity.EntityId);
             var category = x.Category is not null && maps.Categories.ContainsKey(x.Category) ? x.Category : "Other";
             var date = x.ExpenseDate ?? DateOnly.FromDateTime(x.CreatedAt ?? Now);
             var d = new FinancialDocument(entity.Code, $"expense:{x.ExpenseId}", DocumentKinds.Bill, date, $"EXP-{x.ExpenseId}",
                 new DocumentParty(PartyTypes.Supplier, SupplierCode(x.Vendor), x.Vendor ?? "Unknown vendor"),
-                [new DocumentLine(category, x.Amount, x.TaxAmount > 0 ? "HST13" : null, x.TaxAmount > 0 ? x.TaxAmount : null, Memo: Short(x.Description, 200))],
+                [new DocumentLine(category, x.Amount, Memo: Short(x.Description, 200))],
                 Memo: $"Expense {x.ExpenseId}: {x.Vendor}");
             var plan = PostingEngine.Plan(d, entity, maps);
             if (!plan.Complete)
@@ -312,7 +314,7 @@ public class Ledger(FinanceDbContext db, TimeProvider clock)
             }
             Period period;
             bool late;
-            if (x.PeriodId is { } pid && await db.Periods.SingleOrDefaultAsync(p => p.PeriodId == pid) is { IsClosed: false } own)
+            if (x.PeriodId is { } pid && await db.Periods.SingleOrDefaultAsync(p => p.PeriodId == pid) is { IsClosed: false } own && own.Year == date.Year && own.Month == date.Month)
                 (period, late) = (own, false);
             else
                 (period, late) = await PeriodForAsync(date);
@@ -320,7 +322,7 @@ public class Ledger(FinanceDbContext db, TimeProvider clock)
             await InTransaction(async () =>
             {
                 var party = await PartyAsync(d.Party!);
-                var entry = await NewEntryAsync(entity, period, late ? period.Start : date, JournalSources.Expense, d.Memo, user);
+                var entry = await NewEntryAsync(entity, period, late ? period.Start : date, JournalSources.Expense, Memo(d, late), user);
                 entry.LatePosting = late;
                 short n = 1;
                 foreach (var l in plan.Lines)
@@ -337,9 +339,7 @@ public class Ledger(FinanceDbContext db, TimeProvider clock)
                     EntityId = entity.EntityId, PartyId = party.PartyId, Source = JournalSources.Expense, Reference = d.Reference,
                     ItemDate = date, DueDate = date.AddDays(party.PaymentTermsDays), Amount = plan.Credits,
                 });
-                x.JournalEntryId = entry.JournalEntryId;
-                x.PeriodId ??= period.PeriodId;
-                x.EntityId ??= entity.EntityId;
+                db.ExpensePostings.Add(new ExpensePosting { ExpenseId = x.ExpenseId, EntityId = entity.EntityId, JournalEntryId = entry.JournalEntryId, PostedUtc = Now });
                 await db.SaveChangesAsync();
             });
             posted++;
