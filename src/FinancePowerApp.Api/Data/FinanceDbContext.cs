@@ -60,10 +60,10 @@ public class FinanceDbContext(DbContextOptions<FinanceDbContext> options) : DbCo
             e.Property(x => x.Balance).HasComputedColumnSql("Amount - Paid", stored: true);
         });
         b.Entity<Document>().ToTable("Document", "integ");
-        // Read only here: its INSTEAD OF trigger rewrites every change with the Power App's own column list.
+        // Read only here: the Power App owns dbo.Expenses.
         b.Entity<Expense>(e =>
         {
-            e.ToTable("Expenses", "dbo", t => t.HasTrigger("trg_BlockChangesOnClosedPeriod"));
+            e.ToTable("Expenses", "dbo");
             e.Property(x => x.Amount).HasPrecision(12, 2); e.Property(x => x.TaxAmount).HasPrecision(12, 2);
         });
         b.Entity<ExpensePosting>(e => { e.ToTable("ExpensePosting", "ap"); e.HasKey(x => x.ExpenseId); e.Property(x => x.ExpenseId).ValueGeneratedNever(); });

@@ -4,7 +4,8 @@ Accounting for an Ontario clinic group: the books of each clinic, the lab and th
 of the [ClinicHub](https://github.com/ArashKeshtgar/ClinicHub) platform.
 
 It started as a Power Apps canvas app over Azure SQL that recorded expenses by accounting period. That app keeps
-working unchanged: its tables, views, procedures and trigger stay as they were. Around them this repository adds a
+working unchanged: its tables, views and procedures stay as they were. Its closed-month trigger is replaced by
+constraints (`006`): Power Apps can't save to a table that has a trigger. Around them this repository adds a
 small ERP:
 
 - **Businesses:** each clinic, the lab, the pharmacy and a head office keep their own books in one database. A clinic

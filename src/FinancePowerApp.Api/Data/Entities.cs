@@ -270,7 +270,7 @@ public class Expense
     public decimal? TaxAmount { get; set; }
 }
 
-/// <summary>Which journal entry an approved expense became (kept apart: the Power App's trigger owns dbo.Expenses).</summary>
+/// <summary>Which journal entry an approved expense became (kept apart: the Power App owns dbo.Expenses).</summary>
 public class ExpensePosting
 {
     public int ExpenseId { get; set; }
