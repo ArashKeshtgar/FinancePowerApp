@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <None Include="..\..\database\*.sql" Link="database\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\database\install\*.sql" Link="database\install\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

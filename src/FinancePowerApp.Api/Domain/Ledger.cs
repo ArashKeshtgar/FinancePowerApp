@@ -286,9 +286,9 @@ public class Ledger(FinanceDbContext db, TimeProvider clock)
 
     /// <summary>
     /// Approved expenses not yet in the ledger become bills of the default business: the full amount paid to the
-    /// expense account of their category, owed to the vendor. The Power App's TaxAmount is the part deductible for
-    /// income tax (it feeds vw_TaxLedger with the category's TaxDeductible flag), not HST: the Power App doesn't record
-    /// the HST on a receipt, so no input tax credit is taken. Returns how many were posted, and why others weren't.
+    /// expense account of their category, owed to the vendor. The Power App doesn't record HST (its TaxAmount is a
+    /// flat 13% of the amount that the Submit button fills in, not the HST on the receipt), so no input tax credit is
+    /// taken and TaxAmount isn't used. Returns how many were posted, and why others weren't.
     /// </summary>
     public async Task<(int Posted, List<string> Skipped)> PostApprovedExpensesAsync(string user)
     {

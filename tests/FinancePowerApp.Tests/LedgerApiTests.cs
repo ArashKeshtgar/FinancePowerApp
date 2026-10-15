@@ -141,7 +141,7 @@ public class LedgerApiTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Approved_power_app_expenses_become_bills_in_the_ledger()
     {
-        // TaxAmount in the Power App is the deductible part for income tax, not HST: the whole 226 is the expense.
+        // The Power App doesn't record HST; its TaxAmount isn't used: the whole 226 is the expense.
         await factory.Exec("INSERT dbo.Expenses (Amount, Category, ExpenseDate, Vendor, Description, Status, TaxAmount, ApprovedBy, ApprovedDate) VALUES (226.00, 'Office Supplies', '2026-10-03', 'Staples', 'Paper', 'Approved', 226.00, 'Approver', '2026-10-05'), (99.00, 'Travel', '2026-10-03', 'VIA Rail', 'Trip', 'Pending', NULL, NULL, NULL), (40.00, 'Gadgets', '2026-10-04', 'Shop', 'Unmapped category', 'Approved', 40.00, 'Approver', '2026-10-05')");
         var result = await Json(await factory.App().PostAsync("/api/expenses/post-approved", null));
         Assert.Equal(2, result["posted"]!.GetValue<int>());

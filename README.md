@@ -24,8 +24,8 @@ small ERP:
 - **Reports:** dashboard, trial balance, income statement, balance sheet, GST/HST return lines (GST34 101, 103, 106,
   109), receivable and payable aging; CSV downloads.
 - **The Power App's expenses:** approved ones post as bills of the head office (full amount to the category's
-  expense account). The Power App's tax column is the income-tax deductible part, not HST, so no input tax credit
-  is taken.
+  expense account). The Power App doesn't record HST (its `TaxAmount` is a flat 13% of the amount, not the HST on
+  the receipt), so no input tax credit is taken.
 
 ## What the applications send
 
@@ -81,6 +81,11 @@ dotnet run --project src/FinancePowerApp.Api   # http://localhost:5400
 cd web; npm install; npm run dev               # http://localhost:5401
 dotnet test                                    # builds its own database from database/*.sql
 ```
+
+Without `sqlcmd` (Azure SQL from SSMS or the Portal's Query editor): open `database/install/erp_install.sql` connected
+to the database and run it. It is every script above except the demo seed, in one transaction: on any error nothing
+is changed; already installed, it does nothing. It is generated: after changing a script, run
+`python3 database/make_install_script.py` (a test fails until you do).
 
 The upgrade adds schemas `org`, `gl`, `tax`, `ar`, `ap`, `integ`, a unique index on `AccountingPeriods (Year, Month)`
 and the months of 2025 and 2026; it changes nothing the Power App uses. Take a backup first on a production database.
