@@ -290,12 +290,12 @@ function Expenses() {
   return (
     <section className="card">
       <div className="filters">
-        <span className="muted small">Expenses entered and approved in the Power App. Approved ones become bills of the head office: the amount paid to the category's expense account, owed to the vendor. The Power App's tax column is the income-tax deductible part; it doesn't record HST, so no input tax credit is taken.</span>
+        <span className="muted small">Expenses entered and approved in the Power App. Approved ones become bills of the head office: the amount paid to the category's expense account, owed to the vendor. The Power App doesn't record HST (its tax column is a flat 13% of the amount), so no input tax credit is taken.</span>
         {can('ledger.post') && <button className="primary small" style={{ marginLeft: 'auto' }} disabled={waiting === 0} onClick={post}>Post {waiting} approved</button>}
       </div>
       {msg && <p className="notice">{msg}</p>}
       <table className="data">
-        <thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th className="num">Amount</th><th className="num">Deductible</th><th>Status</th><th>Ledger</th></tr></thead>
+        <thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th className="num">Amount</th><th className="num">Tax (13%)</th><th>Status</th><th>Ledger</th></tr></thead>
         <tbody>{rows.map(x => (
           <tr key={x.expenseId}><td>{x.expenseDate}</td><td>{x.vendor}<div className="muted small">{x.description}</div></td><td>{x.category}</td>
             <td className="num">{money(x.amount)}</td><td className="num">{x.taxAmount ? money(x.taxAmount) : ''}</td><td>{x.status}</td>
