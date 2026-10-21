@@ -38,14 +38,19 @@ GO
 
 -- Views and functions owned by dbo read their tables through ownership chaining, so the column DENYs above do not
 -- apply through them (gl.vw_LedgerLines shows the entry memo, ar.vw_Aging the reference). Every view and function in
--- the granted schemas is therefore denied, except the aggregates below that carry no text. Run this script again after
+-- the granted schemas is therefore denied, except the views below that carry no text (two aggregates and the payment dates, from database/060_item_payments.sql). Run this script again after
 -- adding a view: a new one is readable until then.
 DECLARE @sql nvarchar(max) = N'';
 SELECT @sql += N'DENY SELECT ON ' + QUOTENAME(s.name) + N'.' + QUOTENAME(o.name) + N' TO analytics_reader;' + CHAR(10)
 FROM sys.objects o JOIN sys.schemas s ON s.schema_id = o.schema_id
 WHERE s.name IN (N'org', N'gl', N'ar', N'ap', N'tax') AND o.type IN ('V', 'IF', 'TF')
-  AND s.name + N'.' + o.name NOT IN (N'gl.vw_PeriodMovement', N'tax.vw_HstReturn');
+  AND s.name + N'.' + o.name NOT IN (N'gl.vw_PeriodMovement', N'tax.vw_HstReturn', N'ar.vw_ItemPayments');
 EXEC sp_executesql @sql;
 GO
 
 -- Not granted on purpose: integ.* (the inbox as received).
+
+-- The one view over the inbox the login may read: which item was paid, when and how much. No references, parties or text.
+IF OBJECT_ID(N'ar.vw_ItemPayments', N'V') IS NOT NULL
+    GRANT SELECT ON ar.vw_ItemPayments TO analytics_reader;
+GO

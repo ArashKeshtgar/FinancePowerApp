@@ -85,7 +85,8 @@ The upgrade adds schemas `org`, `gl`, `tax`, `ar`, `ap`, `integ`, a unique index
 and the months of 2025 and 2026; it changes nothing the Power App uses. Take a backup first on a production database.
 
 **Analytics' read-only login** (`analytics_reader`: SELECT on `org`, `gl`, `ar`, `ap`, `tax` and `AccountingPeriods`,
-refused personal and free-text columns, nothing in `integ`). Not a numbered script, because it needs a password and
+refused personal and free-text columns, nothing in `integ` except one view: `060_item_payments.sql` makes `ar.vw_ItemPayments`,
+which item was paid when and how much, from the posted receipts, for Analytics' "days to pay"). Not a numbered script, because it needs a password and
 `deploy.ps1` runs every numbered one; run it once per server and put the password only in the Analytics settings:
 
 ```powershell
