@@ -13,8 +13,21 @@ export const useBooks = () => useContext(BooksContext)!
 
 const ENTITY_KEY = 'finance.entity'
 
+function SignIn() {
+  const error = new URLSearchParams(window.location.search).get('signInError')
+  return (
+    <main className="page" style={{ maxWidth: 460, margin: '4rem auto', display: 'grid', gap: '1rem' }}>
+      <div className="brand"><img src="/favicon.svg" alt="" width={32} height={32} /> FinancePowerApp</div>
+      <p className="muted">People sign in through ClinicHub, which decides who may use the books.</p>
+      {error && <p className="error">{error}</p>}
+      <button className="primary" onClick={() => window.location.assign(`/api/auth/sso/start?returnUrl=${encodeURIComponent('/')}`)}>Sign in through ClinicHub</button>
+    </main>
+  )
+}
+
 export function App() {
   const [me, setMe] = useState<Me | null>(null)
+  const [signIn, setSignIn] = useState<'clinichub' | 'demo'>('demo')
   const [entities, setEntities] = useState<Entity[]>([])
   const [entityId, setEntity] = useState<number | undefined>(() => {
     try { const v = localStorage.getItem(ENTITY_KEY); return v ? Number(v) : undefined } catch { return undefined }
@@ -23,8 +36,11 @@ export function App() {
 
   const reloadEntities = () => api.entities().then(setEntities)
   useEffect(() => {
-    api.me().then(setMe).catch(e => setError(e.message))
-    reloadEntities().catch(() => {})
+    Promise.all([api.me(), api.authSettings()]).then(([m, s]) => {
+      setMe(m)
+      setSignIn(s.signIn)
+      if (m.name && m.permissions.length > 0) reloadEntities().catch(() => {})
+    }).catch(e => setError(e.message))
   }, [])
 
   const setEntityId = (id?: number) => {
@@ -34,6 +50,8 @@ export function App() {
 
   if (error) return <p className="page error">Can't reach the finance API: {error}</p>
   if (!me) return <p className="page muted">Loading…</p>
+  if (!me.name) return <SignIn />
+  if (me.permissions.length === 0) return <p className="page error">{me.name}: your role does not allow FinancePowerApp. <a href="/api/auth/sso/signout">Sign out</a></p>
   const can = (p: string) => me.permissions.includes(p) || me.permissions.includes('admin')
 
   return (
@@ -54,7 +72,10 @@ export function App() {
             <NavLink to="/reports">Reports</NavLink>
             <NavLink to="/setup">Setup</NavLink>
           </nav>
-          <div className="who muted small">{me.name}</div>
+          <div className="who muted small">
+            {me.name}{me.clinic ? ` · ${me.clinic}` : ''}
+            {signIn === 'clinichub' && <> · <a href="/api/auth/sso/signout">Sign out</a></>}
+          </div>
         </aside>
         <main className="page">
           <Routes>

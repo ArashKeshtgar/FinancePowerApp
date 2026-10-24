@@ -7,7 +7,8 @@ export class ApiError extends Error {
 async function request<T>(method: string, url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method, credentials: 'same-origin',
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
+    // X-Finance: with sign-in through ClinicHub the session is a cookie, so the API wants proof the call comes from this app.
+    headers: { 'X-Finance': '1', ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}) },
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (res.status === 204) return undefined as T
@@ -20,7 +21,7 @@ async function request<T>(method: string, url: string, body?: unknown): Promise<
 export const firstError = (e: unknown, fallback: string) =>
   e instanceof ApiError ? Object.values(e.fieldErrors).flat()[0] ?? e.message : fallback
 
-export type Me = { name: string; permissions: string[] }
+export type Me = { name: string | null; permissions: string[]; clinic?: string | null }
 export type Entity = { entityId: number; code: string; name: string; kind: string; hstNumber?: string; isDefault: boolean; isActive: boolean; claimsInputTaxCredits: boolean; sources: string[] }
 export type Account = { accountId: number; number: string; name: string; type: string; subtype?: string; isPostable: boolean; isActive: boolean; gifiCode?: string; description?: string }
 export type Party = { partyId: number; partyType: string; code: string; name: string; email?: string; phone?: string; paymentTermsDays: number; isActive: boolean }
@@ -54,6 +55,7 @@ const q = (params: Record<string, string | number | boolean | undefined | null>)
 
 export const api = {
   me: () => request<Me>('GET', '/api/me'),
+  authSettings: () => request<{ signIn: 'clinichub' | 'demo' }>('GET', '/api/auth/settings'),
   entities: () => request<Entity[]>('GET', '/api/entities'),
   saveEntity: (id: number | null, e: { code: string; name: string; kind: string; hstNumber?: string | null; isActive: boolean }) =>
     request<Entity>(id ? 'PUT' : 'POST', id ? `/api/entities/${id}` : '/api/entities', e),

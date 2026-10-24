@@ -8,7 +8,10 @@ export default defineConfig({
     port: 5401,
     strictPort: true,
     proxy: {
+      // The browser's Host is kept, so a sign-in through ClinicHub returns to :5401 (registered there) and lands on the page.
       '/api': { target: 'http://localhost:5400', changeOrigin: false },
+      '/signin-oidc': { target: 'http://localhost:5400', changeOrigin: false },
+      '/signout-callback-oidc': { target: 'http://localhost:5400', changeOrigin: false },
     },
   },
 })

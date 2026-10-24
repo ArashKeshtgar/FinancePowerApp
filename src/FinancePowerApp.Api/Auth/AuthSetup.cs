@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -21,8 +22,15 @@ public class ClinicHubOptions
     /// <summary>ClinicHub's address. Set: documents from the applications are checked against ClinicHub's tokens.</summary>
     public string? Authority { get; set; }
     public string ClientId { get; set; } = "finance";
+    /// <summary>The application's secret in ClinicHub. With it, people sign in through ClinicHub; without it, only the development user exists.</summary>
     public string? ClientSecret { get; set; }
     public bool RequireHttpsMetadata { get; set; } = true;
+
+    /// <summary>How often a signed-in session is checked with ClinicHub again, and how long ClinicHub may be unreachable before it ends.</summary>
+    public int RecheckMinutes { get; set; } = 5;
+    public int OfflineGraceMinutes { get; set; } = 30;
+
+    public bool SignInEnabled => !string.IsNullOrWhiteSpace(Authority) && !string.IsNullOrWhiteSpace(ClientSecret);
 }
 
 public static class AuthSetup
@@ -39,12 +47,15 @@ public static class AuthSetup
     {
         var hub = builder.Configuration.GetSection("ClinicHub").Get<ClinicHubOptions>() ?? new ClinicHubOptions();
         builder.Services.Configure<ClinicHubOptions>(builder.Configuration.GetSection("ClinicHub"));
-        if (!builder.Environment.IsDevelopment() && builder.Environment.EnvironmentName != "Testing")
-            throw new InvalidOperationException("Outside development, people sign in through ClinicHub. Configure ClinicHub:Authority.");
+        if (!hub.SignInEnabled && !builder.Environment.IsDevelopment() && builder.Environment.EnvironmentName != "Testing")
+            throw new InvalidOperationException("Set ClinicHub:Authority and ClinicHub:ClientSecret: outside development people sign in through ClinicHub.");
 
-        // People: in development, everyone is the developer with every permission (sign-in through ClinicHub comes with phase 2).
-        var auth = builder.Services.AddAuthentication(DevScheme)
-            .AddScheme<AuthenticationSchemeOptions, DevAuthHandler>(DevScheme, _ => { });
+        // People: through ClinicHub when it is configured; otherwise the developer with every permission (development and tests only).
+        var auth = builder.Services.AddAuthentication(hub.SignInEnabled ? CookieAuthenticationDefaults.AuthenticationScheme : DevScheme);
+        if (hub.SignInEnabled)
+            auth.AddClinicHubSignIn(hub);
+        else
+            auth.AddScheme<AuthenticationSchemeOptions, DevAuthHandler>(DevScheme, _ => { });
 
         // Applications: tokens issued or signed by ClinicHub for the audience "finance".
         if (!string.IsNullOrWhiteSpace(hub.Authority))

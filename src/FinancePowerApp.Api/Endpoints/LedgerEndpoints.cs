@@ -30,10 +30,10 @@ public static class LedgerEndpoints
         var post = app.MapGroup("/api").RequireAuthorization(FinancePermissions.Post);
         var admin = app.MapGroup("/api").RequireAuthorization(FinancePermissions.Admin);
 
-        app.MapGet("/api/me", (ClaimsPrincipal user) => new
-        {
-            name = user.UserName(), permissions = user.FindAll(AuthSetup.PermissionClaim).Select(c => c.Value).ToArray(),
-        }).RequireAuthorization();
+        // Who is signed in (nobody: name is null), for the React app.
+        app.MapGet("/api/me", (ClaimsPrincipal user) => user.Identity?.IsAuthenticated == true
+            ? new { name = (string?)user.UserName(), permissions = user.FindAll(AuthSetup.PermissionClaim).Select(c => c.Value).ToArray(), clinic = user.FindFirstValue(ClinicHubSignIn.ClinicName) }
+            : new { name = (string?)null, permissions = Array.Empty<string>(), clinic = (string?)null }).AllowAnonymous();
 
         // ---- businesses
         view.MapGet("/entities", async (FinanceDbContext db) =>

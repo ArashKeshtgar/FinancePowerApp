@@ -97,7 +97,9 @@ sqlcmd -S . -E -C -b -v ReaderPassword="<a new password>" -i database/tools/anal
 
 - [x] Ledger, receivables, payables, HST, posting maps, inbox, reports, web UI
 - [x] Approved Power App expenses into the ledger
-- [ ] Sign-in through ClinicHub (`finance:*` permissions); development uses a single developer user
+- [x] Sign-in through ClinicHub (`finance:*` permissions, re-checked every 5 minutes): on with `ClinicHub:Authority`
+      and `ClinicHub:ClientSecret` (`--launch-profile connected`, web on :5401); without them, development has a single
+      developer user and any other environment refuses to start
 - [x] Documents from ClinicHub (claims, remittances, physicians' shares, uninsured invoices and payments), LabFlow
       (patient invoices, online payments; insured work once fees are set) and ClinicReport (signed ordered exams once
       template fees are set). Run with `--launch-profile connected` so their ClinicHub tokens are checked

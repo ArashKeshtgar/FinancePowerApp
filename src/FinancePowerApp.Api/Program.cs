@@ -2,6 +2,8 @@ using FinancePowerApp.Api.Auth;
 using FinancePowerApp.Api.Data;
 using FinancePowerApp.Api.Domain;
 using FinancePowerApp.Api.Endpoints;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -32,8 +34,22 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 app.UseAuthentication();
 app.UseAuthorization();
+var signInThroughClinicHub = (app.Configuration.GetSection("ClinicHub").Get<ClinicHubOptions>() ?? new ClinicHubOptions()).SignInEnabled;
+if (signInThroughClinicHub)
+    app.UseCsrfHeaderCheck();
 
 app.MapGet("/healthz", () => "ok").AllowAnonymous();
+// How people sign in: "clinichub", or the development user.
+app.MapGet("/api/auth/settings", () => new { signIn = signInThroughClinicHub ? "clinichub" : "demo" }).AllowAnonymous();
+if (signInThroughClinicHub)
+{
+    app.MapGet("/api/auth/sso/start", (string? returnUrl) => Results.Challenge(
+        new AuthenticationProperties { RedirectUri = returnUrl is { Length: > 0 } && returnUrl.StartsWith('/') && !returnUrl.StartsWith("//") ? returnUrl : "/" },
+        [ClinicHubSignIn.Scheme])).AllowAnonymous();
+    // One sign-out: here and at ClinicHub.
+    app.MapGet("/api/auth/sso/signout", () => Results.SignOut(new AuthenticationProperties { RedirectUri = "/" },
+        [CookieAuthenticationDefaults.AuthenticationScheme, ClinicHubSignIn.Scheme])).AllowAnonymous();
+}
 app.MapLedgerEndpoints();
 app.MapReportEndpoints();
 app.MapIntegrationEndpoints();
