@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
+// Secrets as files, one per setting (e.g. ConnectionStrings__Finance), the way Docker mounts them; none outside a container.
+builder.Configuration.AddKeyPerFile("/run/secrets", optional: true);
 
 builder.Services.AddDbContext<FinanceDbContext>(o => o.UseSqlServer(builder.Configuration.GetConnectionString("Finance")));
 builder.Services.AddSingleton(TimeProvider.System);
